@@ -1,26 +1,100 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F5F5DC;
+  --foreground: #2C3E50;
+
+  --card: #FFFFFF;
+  --card-foreground: #2C3E50;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #2C3E50;
+
+  --primary: #B2AC88;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #E3E0D1;
+  --secondary-foreground: #2C3E50;
+
+  --muted: #E3E0D1;
+  --muted-foreground: #6B7280;
+
+  --accent: #E9967A;
+  --accent-foreground: #FFFFFF;
+
+  --destructive: #E9967A;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #D1D5DB;
+  --input: #D1D5DB;
+  --ring: #B2AC88;
+
+  --radius: 1rem;
 }
 
 @theme inline {
+  --font-sans: 'DM Sans', sans-serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --color-sage-50: #f6f7f4;
+  --color-sage-100: #e8ebe3;
+  --color-sage-200: #d4dbc9;
+  --color-sage-300: #b5c3a8;
+  --color-sage-400: #94a681;
+  --color-sage-500: #788a63;
+  --color-sage-600: #5f6d4e;
+  --color-sage-700: #4b573e;
+  --color-sage-800: #3d4734;
+
+  --color-coral-muted: #E9967A;
+  --color-cream: #F5F5DC;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.shadow-soft {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-card {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
 }
