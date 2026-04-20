@@ -483,13 +483,13 @@ async function escalateToNextCandidate(request: any) {
         
         const unavailableIds = [
             request.original_teacher_id,
-            ...previousAttempts?.map(pa => pa.assigned_teacher_id).filter(id => id !== null) || []
+            ...(previousAttempts as any[])?.map(pa => pa.assigned_teacher_id).filter(id => id !== null) || []
         ];
 
         // 5. Use the engine to find the next best
         // Map periods to the shape expected by the engine
         const dayOfWeekNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const mappedTT = (allPeriods || []).map(p => ({
+        const mappedTT = ((allPeriods || []) as any[]).map(p => ({
             id: p.id,
             teacher_id: p.teacher_id,
             day: dayOfWeekNames[p.day_of_week] as any,
