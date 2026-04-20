@@ -5,7 +5,7 @@ import { getBot } from './index';
  * Webhook handler for Telegram bot
  * This can be used with Next.js API routes or serverless functions
  */
-export const handleWebhook = webhookCallback(getBot(), 'std/http');
+export const handleWebhook = (req: any) => webhookCallback(getBot(), 'std/http')(req);
 
 /**
  * Setup webhook for the bot
