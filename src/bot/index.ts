@@ -249,7 +249,7 @@ async function getDailySchedule(telegramUserId: string): Promise<string> {
         return `📅 *${dateStr}*\n\n✨ You have no scheduled periods today. Enjoy your free day!`;
     }
 
-    const periodsList = periods.map((p, i) => {
+    const periodsList = (periods as any[]).map((p, i) => {
         const icon = p.period_type === 'teaching' ? '📚' : 
                      p.period_type === 'rest' ? '☕' :
                      p.period_type === 'break' ? '🍃' :
@@ -292,7 +292,7 @@ async function getWeeklySchedule(telegramUserId: string): Promise<string> {
     }
 
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const scheduleByDay = periods.reduce((acc, p) => {
+    const scheduleByDay = (periods as any[]).reduce((acc, p) => {
         if (!acc[p.day_of_week]) acc[p.day_of_week] = [];
         acc[p.day_of_week].push(p);
         return acc;
