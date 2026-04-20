@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleWebhook } from '@/bot/webhook';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Telegram webhook endpoint
  * POST /api/telegram-webhook

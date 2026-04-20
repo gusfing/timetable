@@ -5,7 +5,8 @@ function getSupabase() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
     if (!url || !key) {
-        throw new Error('Supabase URL or Key missing');
+        console.warn('Supabase URL or Key missing');
+        return null as any;
     }
     return createClient(url, key);
 }

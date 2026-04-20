@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendDailyBriefingsToAllTeachers } from '@/bot/scheduler';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Daily briefing cron endpoint
  * POST /api/cron/daily-briefing

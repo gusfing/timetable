@@ -10,7 +10,8 @@ function getSupabase() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
     if (!url || !key) {
-        throw new Error('Supabase URL or Key missing');
+        console.warn('Supabase URL or Key missing');
+        return null as any;
     }
     return createClient(url, key);
 }
@@ -19,7 +20,10 @@ function getSupabase() {
 let _bot: Bot | null = null;
 export function getBot() {
     if (!_bot) {
-        if (!token) throw new Error('TELEGRAM_BOT_TOKEN missing');
+        if (!token) {
+            console.warn('TELEGRAM_BOT_TOKEN missing');
+            return null as any;
+        }
         _bot = new Bot(token);
     }
     return _bot;
