@@ -33,7 +33,7 @@ export function getBot() {
 const conversationState = new Map<number, { awaitingEmployeeId: boolean }>();
 
 // Command: /start
-getBot().command('start', (ctx) => {
+getBot().command('start', (ctx: Context) => {
     ctx.reply(
         'Welcome to Anti-Gravity Timetable! 🎓\n\n' +
         'Use /link to connect your account with your Employee ID.\n' +
@@ -44,7 +44,7 @@ getBot().command('start', (ctx) => {
 });
 
 // Command: /link - Start Employee ID verification flow
-getBot().command('link', async (ctx) => {
+getBot().command('link', async (ctx: Context) => {
     const userId = ctx.from?.id;
     if (!userId) return;
 
@@ -74,7 +74,7 @@ getBot().command('link', async (ctx) => {
 });
 
 // Command: /today - Get today's schedule
-getBot().command('today', async (ctx) => {
+getBot().command('today', async (ctx: Context) => {
     const userId = ctx.from?.id;
     if (!userId) return;
 
@@ -90,7 +90,7 @@ getBot().command('today', async (ctx) => {
 });
 
 // Command: /week - Get weekly schedule
-getBot().command('week', async (ctx) => {
+getBot().command('week', async (ctx: Context) => {
     const userId = ctx.from?.id;
     if (!userId) return;
 
@@ -106,7 +106,7 @@ getBot().command('week', async (ctx) => {
 });
 
 // Handle callback queries for substitution buttons
-getBot().on('callback_query:data', async (ctx) => {
+getBot().on('callback_query:data', async (ctx: Context) => {
     try {
         const data = JSON.parse(ctx.callbackQuery.data);
         
@@ -124,7 +124,7 @@ getBot().on('callback_query:data', async (ctx) => {
 });
 
 // Handle text messages for Employee ID verification
-getBot().on('message:text', async (ctx) => {
+getBot().on('message:text', async (ctx: Context) => {
     const userId = ctx.from?.id;
     const text = ctx.message.text;
     
