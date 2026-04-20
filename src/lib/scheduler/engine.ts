@@ -21,7 +21,9 @@ export function validateSchedule(
 ): ValidationResult {
     const result: ValidationResult = { isValid: true, errors: [], warnings: [] };
 
-    // Rule 1: Anti-Burnout — max consecutive periods
+    const teachingPeriods = daySchedule.filter(p => p.period_type === 'teaching');
+    const teachingCount = teachingPeriods.length;
+
     let consecutiveCount = 0;
     let lastPeriod = -2;
     let lastSubject = '';
@@ -227,7 +229,7 @@ export function isForbiddenZone(
     for (let i = 1; i < withNew.length; i++) {
         if (withNew[i] === withNew[i - 1] + 1) {
             consecutive++;
-            if (consecutive > rules.maxConsecutivePeriods) return true;
+            if (consecutive > rules.antiBurnoutLimit) return true;
         } else {
             consecutive = 1;
         }
@@ -274,7 +276,7 @@ export function getTeacherBreakPeriod(
     daySchedule: TimetableEntry[],
     rules: TimetableRulesConfig = DEFAULT_RULES
 ): number | null {
-    if (rules.dayTeacherBreaks === 0) return null;
+    if (rules.dayTeacherBreak === 0) return null;
     // The teacher's break should be adjacent to school break but not the same
     const schoolBreak = rules.schoolBreakPeriod;
     const candidate = schoolBreak > 1 ? schoolBreak - 1 : schoolBreak + 1;

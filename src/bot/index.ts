@@ -1,6 +1,8 @@
 import { Bot, InlineKeyboard, Context } from 'grammy';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import { DEFAULT_RULES } from '../lib/scheduler/rules';
+import { findTopSubstitutes } from '../lib/scheduler/engine';
 
 dotenv.config({ path: '.env.local' });
 

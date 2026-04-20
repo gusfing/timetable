@@ -51,8 +51,18 @@ async function seedTeachersAndTimetable() {
     }
     const tenantId = tenant.id;
 
-    // Create SuperAdmin
+    console.log('🔐 Configuring Demo Admin Auth...');
+    const adminEmail = 'admin@demo.school';
+    const { data: adminUser } = await supabase.auth.admin.createUser({
+        email: adminEmail,
+        password: 'admin123',
+        email_confirm: true,
+        user_metadata: { role: 'superadmin', name: 'System SuperAdmin' }
+    });
+
+    // Create SuperAdmin Record linked to Auth ID if possible
     await (supabase.from('teachers') as any).insert({
+        id: adminUser.user?.id || undefined,
         tenant_id: tenantId,
         name: 'System SuperAdmin',
         employee_id: 'SUPERADMIN',
@@ -103,10 +113,26 @@ async function seedTeachersAndTimetable() {
             const wingId = wingMap[wingName];
 
             if (!teacherSeen.has(tName)) {
+                let authId = undefined;
+                let empId = `EMP${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
+                // Create special demo user for the first teacher found
+                if (teacherSeen.size === 0) {
+                   empId = 'EMP1';
+                   const { data: authUser } = await supabase.auth.admin.createUser({
+                       email: 'teacher1@demo.school',
+                       password: 'password123',
+                       email_confirm: true,
+                       user_metadata: { role: 'teacher', name: tName }
+                   });
+                   authId = authUser.user?.id;
+                }
+
                 teachersToInsert.push({
+                    id: authId,
                     tenant_id: tenantId,
                     name: tName,
-                    employee_id: `EMP${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+                    employee_id: empId,
                     role: 'teacher',
                     subjects: [],
                     updated_at: new Date().toISOString()

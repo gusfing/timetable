@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -200,72 +200,96 @@ export default function AdminDashboard() {
     const [rules, setRules] = useState<TimetableRulesConfig>(DEFAULT_RULES);
     const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
 
+    const teachersRef = useRef(teachers);
+    useEffect(() => {
+        teachersRef.current = teachers;
+    }, [teachers]);
+
+    const fetchData = useCallback(async () => {
+        try {
+            // Fetch Teachers from API
+            const teachersRes = await fetch('/api/teachers');
+            const teachersData = await teachersRes.json();
+            setTeachers(teachersData.teachers || []);
+            
+            // Get tenantId from first teacher or fallback
+            const tId = teachersData.teachers?.[0]?.tenant_id || '00000000-0000-0000-0000-000000000001';
+
+            // Fetch Timetable from API
+            const ttRes = await fetch(`/api/timetable?day=${selectedDay}`);
+            const ttData = await ttRes.json();
+            setTimetable(ttData.timetable || []);
+
+            // Fetch rules
+            const rulesRes = await fetch('/api/rules');
+            const rulesData = await rulesRes.json();
+            if (rulesData.rules) setRules(rulesData.rules);
+
+            // Fetch unread notification count
+            const notifRes = await fetch('/api/notifications?unread=true&limit=1');
+            const notifData = await notifRes.json();
+            setUnreadNotifCount(notifData.notifications?.length ?? 0);
+
+            return tId;
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+            toast.error('Failed to load live data');
+            return '00000000-0000-0000-0000-000000000001';
+        }
+    }, [selectedDay]);
+
     useEffect(() => {
         setHasMounted(true);
         
-        async function fetchData() {
-            try {
-                // Fetch Teachers from API
-                const teachersRes = await fetch('/api/teachers');
-                const teachersData = await teachersRes.json();
-                setTeachers(teachersData.teachers || []);
+        let subChannel: any;
 
-                // Fetch Timetable from API
-                const ttRes = await fetch(`/api/timetable?day=${selectedDay}`);
-                const ttData = await ttRes.json();
-                setTimetable(ttData.timetable || []);
-
-                // Fetch rules
-                const rulesRes = await fetch('/api/rules');
-                const rulesData = await rulesRes.json();
-                if (rulesData.rules) setRules(rulesData.rules);
-
-                // Fetch unread notification count
-                const notifRes = await fetch('/api/notifications?unread=true&limit=1');
-                const notifData = await notifRes.json();
-                setUnreadNotifCount(notifData.notifications?.length ?? 0);
-
-            } catch (err) {
-                console.error('Error fetching dashboard data:', err);
-                toast.error('Failed to load live data');
-            }
-        }
-        
-        fetchData();
-
-        // REAL-TIME: Listen for substitution status updates
-        const supabaseClient = createClient();
-        const subChannel = supabaseClient
-            .channel('substitution-updates')
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'substitution_requests' },
-                (payload) => {
-                    const status = payload.new.status;
-                    const teacherId = payload.new.assigned_teacher_id;
-                    const teacher = teachers.find(t => t.id === teacherId);
-                    
-                    if (status === 'accepted') {
-                        toast.success(`${teacher?.name || 'A teacher'} accepted a substitution!`, {
-                            icon: '✅',
-                            duration: 5000
-                        });
-                        fetchData(); // Refresh to show the assigned teacher in grid
-                    } else if (status === 'declined') {
-                        toast.error(`${teacher?.name || 'A teacher'} declined a substitution.`, {
-                            icon: '❌',
-                            description: 'The system is escalating to the next candidate.',
-                            duration: 5000
-                        });
+        fetchData().then(tId => {
+            // REAL-TIME: Listen for substitution status updates via Broadcast
+            const supabaseClient = createClient();
+            
+            subChannel = supabaseClient
+                .channel(`tenant:${tId}:substitutions`, {
+                    config: {
+                        broadcast: { self: false },
+                        presence: { key: 'admin' }
                     }
-                }
-            )
-            .subscribe();
+                })
+                .on(
+                    'broadcast',
+                    { event: 'UPDATE' },
+                    (payload: any) => {
+                        const { status, assigned_teacher_id } = payload.payload;
+                        const teacher = teachersRef.current.find(t => t.id === assigned_teacher_id);
+                        
+                        if (status === 'accepted') {
+                            toast.success(`${teacher?.name || 'A teacher'} accepted a substitution!`, {
+                                icon: '✅',
+                                duration: 5000
+                            });
+                            fetchData(); 
+                        } else if (status === 'declined') {
+                            toast.error(`${teacher?.name || 'A teacher'} declined a substitution.`, {
+                                icon: '❌',
+                                description: 'The system is escalating to the next candidate.',
+                                duration: 5000
+                            });
+                        }
+                    }
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Connected to private substitution channel');
+                    }
+                });
+        });
 
         return () => {
-            supabaseClient.removeChannel(subChannel);
+            if (subChannel) {
+                const supabaseClient = createClient();
+                supabaseClient.removeChannel(subChannel);
+            }
         };
-    }, [selectedDay, teachers.length]);
+    }, [selectedDay, fetchData]);
 
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
@@ -623,11 +647,11 @@ export default function AdminDashboard() {
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground">🔥 Anti-Burnout Limit</span>
-                                    <Badge variant="outline" className="text-[10px] border-destructive/50 text-destructive">{rules.maxConsecutivePeriods} periods</Badge>
+                                    <Badge variant="outline" className="text-[10px] border-destructive/50 text-destructive">{rules.antiBurnoutLimit} periods</Badge>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground">☕ Teacher Break</span>
-                                    <Badge variant="outline" className="text-[10px]">{rules.dayTeacherBreaks}/day</Badge>
+                                    <Badge variant="outline" className="text-[10px]">{rules.dayTeacherBreak}/day</Badge>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground">🔔 School Break</span>
@@ -639,11 +663,11 @@ export default function AdminDashboard() {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground">⚖️ Fairness Index</span>
-                                    <Badge variant="outline" className={`text-[10px] ${rules.fairnessIndexEnabled ? 'text-green-600 border-green-400/50' : 'text-muted-foreground'}`}>{rules.fairnessIndexEnabled ? 'On' : 'Off'}</Badge>
+                                    <Badge variant="outline" className={`text-[10px] ${rules.fairnessIndex ? 'text-green-600 border-green-400/50' : 'text-muted-foreground'}`}>{rules.fairnessIndex ? 'On' : 'Off'}</Badge>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground">🌸 Blossom Guard</span>
-                                    <Badge variant="outline" className={`text-[10px] ${rules.blossomSupervisionAlways ? 'text-pink-600 border-pink-400/50' : 'text-muted-foreground'}`}>{rules.blossomSupervisionAlways ? 'Always' : 'Off'}</Badge>
+                                    <Badge variant="outline" className={`text-[10px] ${rules.blossomSupervision ? 'text-pink-600 border-pink-400/50' : 'text-muted-foreground'}`}>{rules.blossomSupervision ? 'Always' : 'Off'}</Badge>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-muted-foreground">🤖 AI Model</span>
@@ -653,7 +677,7 @@ export default function AdminDashboard() {
                                         className="text-[10px] bg-secondary/50 border-none rounded-lg px-2 py-0.5 text-foreground max-w-[100px] truncate"
                                     >
                                         {AVAILABLE_MODELS.map(m => (
-                                            <option key={m.id} value={m.id}>{m.label}</option>
+                                            <option key={m.id} value={m.id}>{m.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -725,6 +749,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                             <TabsList className="bg-secondary p-1 rounded-xl">
                                 <TabsTrigger value="grid" className="rounded-lg px-6 data-[state=active]:bg-white">Live Grid</TabsTrigger>
+                                <TabsTrigger value="staff" className="rounded-lg px-6 data-[state=active]:bg-white">Staff Management</TabsTrigger>
                                 <TabsTrigger value="fairness" className="rounded-lg px-6 data-[state=active]:bg-white">Fairness View</TabsTrigger>
                             </TabsList>
 
@@ -794,7 +819,10 @@ export default function AdminDashboard() {
                                                         <tr key={teacher.id} className="hover:bg-secondary/10 transition-colors">
                                                             <td className="px-6 py-4 border-b border-secondary/20">
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className="font-medium text-foreground">{teacher.name}</div>
+                                                                    <div className="font-medium text-foreground">
+                                                                        {teacher.title && <span className="text-muted-foreground mr-1">{teacher.title}</span>}
+                                                                        {teacher.name}
+                                                                    </div>
                                                                     <Badge variant="outline" className={`text-[9px] px-1 h-4 rounded-md border-none ${teacher.wing === 'Blossom' ? 'bg-pink-100 text-pink-700' :
                                                                         teacher.wing === 'Scholar' ? 'bg-blue-100 text-blue-700' :
                                                                             'bg-purple-100 text-purple-700'
@@ -803,7 +831,11 @@ export default function AdminDashboard() {
                                                                     </Badge>
                                                                 </div>
                                                                 <div className="flex items-center gap-2 mt-0.5">
-                                                                    <div className="text-[10px] text-muted-foreground">Index: <span className="font-bold text-primary">{teacher.workload_score || 0}</span></div>
+                                                                    {teacher.post ? (
+                                                                        <div className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 rounded uppercase">{teacher.post}</div>
+                                                                    ) : (
+                                                                        <div className="text-[10px] text-muted-foreground">Index: <span className="font-bold text-primary">{teacher.workload_score || 0}</span></div>
+                                                                    )}
                                                                     <div className="h-1 w-1 bg-secondary rounded-full" />
                                                                     <div className="text-[10px] text-muted-foreground">{teacher.wing || 'Scholar'}</div>
                                                                 </div>
@@ -904,6 +936,102 @@ export default function AdminDashboard() {
                                             </tbody>
                                         </table>
                                     </DndContext>
+                                </div>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="staff" className="m-0">
+                            <Card className="rounded-3xl border-none shadow-soft bg-white p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h3 className="text-xl font-bold">Staff Directory</h3>
+                                        <p className="text-sm text-muted-foreground">Manage professional titles, administrative posts, and roles.</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input placeholder="Search staff..." className="pl-9 rounded-xl border-secondary/50" />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-secondary/30">
+                                                <th className="pb-4 font-semibold text-sm text-muted-foreground">Title</th>
+                                                <th className="pb-4 font-semibold text-sm text-muted-foreground">Name</th>
+                                                <th className="pb-4 font-semibold text-sm text-muted-foreground">Post / Designation</th>
+                                                <th className="pb-4 font-semibold text-sm text-muted-foreground">Role</th>
+                                                <th className="pb-4 font-semibold text-sm text-muted-foreground">Expertise</th>
+                                                <th className="pb-4 font-semibold text-sm text-muted-foreground text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-secondary/20">
+                                            {teachers.map(t => (
+                                                <tr key={t.id} className="group hover:bg-secondary/10 transition-colors">
+                                                    <td className="py-4">
+                                                        <select 
+                                                            value={t.title || ''} 
+                                                            onChange={async (e) => {
+                                                                const newTitle = e.target.value;
+                                                                setTeachers(prev => prev.map(item => item.id === t.id ? { ...item, title: newTitle } : item));
+                                                                await fetch(`/api/teachers/${t.id}`, {
+                                                                    method: 'PATCH',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ title: newTitle })
+                                                                });
+                                                                toast.success(`Updated title for ${t.name}`);
+                                                            }}
+                                                            className="bg-secondary/50 border-none rounded-lg text-xs p-1 focus:ring-1 focus:ring-primary"
+                                                        >
+                                                            <option value="">None</option>
+                                                            <option value="Mr.">Mr.</option>
+                                                            <option value="Mrs.">Mrs.</option>
+                                                            <option value="Ms.">Ms.</option>
+                                                            <option value="Dr.">Dr.</option>
+                                                            <option value="Prof.">Prof.</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="py-4 font-bold text-sm">{t.name}</td>
+                                                    <td className="py-4">
+                                                        <Input 
+                                                            defaultValue={t.post || ''} 
+                                                            onBlur={async (e) => {
+                                                                const newPost = e.target.value;
+                                                                if (newPost === t.post) return;
+                                                                setTeachers(prev => prev.map(item => item.id === t.id ? { ...item, post: newPost } : item));
+                                                                await fetch(`/api/teachers/${t.id}`, {
+                                                                    method: 'PATCH',
+                                                                    headers: { 'Content-Type': 'application/json' },
+                                                                    body: JSON.stringify({ post: newPost })
+                                                                });
+                                                                toast.success(`Updated post for ${t.name}`);
+                                                            }}
+                                                            placeholder="e.g. HOD, Coordinator"
+                                                            className="h-8 text-xs rounded-lg border-secondary/50 max-w-[150px]"
+                                                        />
+                                                    </td>
+                                                    <td className="py-4">
+                                                        <Badge variant="secondary" className="text-[10px] uppercase">{t.role}</Badge>
+                                                    </td>
+                                                    <td className="py-4">
+                                                        <div className="flex gap-1 flex-wrap max-w-[200px]">
+                                                            {t.subjects.slice(0, 3).map((s, idx) => (
+                                                                <span key={idx} className="text-[9px] bg-secondary px-1.5 py-0.5 rounded-full text-muted-foreground whitespace-nowrap">{s}</span>
+                                                            ))}
+                                                            {t.subjects.length > 3 && <span className="text-[9px] text-muted-foreground">+{t.subjects.length - 3}</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 text-right">
+                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg">
+                                                            <Settings2 className="h-4 w-4 text-muted-foreground" />
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </Card>
                         </TabsContent>

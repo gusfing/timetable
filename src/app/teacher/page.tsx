@@ -46,9 +46,15 @@ export default function TeacherPortal() {
       setLoading(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { window.location.href = '/login'; return; }
+        const hasDemoSession = document.cookie.includes('demo_session');
+        
+        if (!session && !hasDemoSession) { 
+          window.location.href = '/login'; 
+          return; 
+        }
 
-        const userId = session.user.id;
+        const userId = session?.user?.id || '00000000-0000-0000-0000-000000000002';
+        const userEmail = session?.user?.email || 'teacher1@demo.school';
 
         // Get teacher profile
         const { data: teacherData } = await supabase
@@ -62,7 +68,7 @@ export default function TeacherPortal() {
           const { data: teacherByEmail } = await supabase
             .from('teachers')
             .select('*')
-            .eq('employee_id', session.user.email)
+            .eq('employee_id', session?.user?.email)
             .maybeSingle();
           if (teacherByEmail) setTeacher(teacherByEmail);
         } else {

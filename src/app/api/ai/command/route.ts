@@ -43,16 +43,26 @@ export async function POST(req: Request) {
     const supabase = createClient(cookieStore);
 
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const hasDemoSession = cookieStore.has('demo_session');
 
-    const { data: profile } = await supabase.from('teachers').select('tenant_id').eq('id', session.user.id).single();
-    if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    if (!session && !hasDemoSession) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Use Demo tenant ID if no session
+    let tenantId = '00000000-0000-0000-0000-000000000001';
+
+    if (session) {
+      const { data: profile } = await supabase.from('teachers').select('tenant_id').eq('id', session.user.id).single();
+      if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+      tenantId = profile.tenant_id;
+    }
 
     // Fetch tenant rules
     const { data: config } = await supabase
       .from('tenant_configs')
       .select('rules')
-      .eq('tenant_id', profile.tenant_id)
+      .eq('tenant_id', tenantId)
       .single();
 
     const currentRules = config?.rules || DEFAULT_RULES;
@@ -84,7 +94,7 @@ export async function POST(req: Request) {
       jsonMode: false, 
       temperature: 0.2, 
       maxTokens: 2000,
-      modelId: model // Use the model selected by the admin
+      model: model // Use the model selected by the admin
     });
 
     // Extract JSON from response

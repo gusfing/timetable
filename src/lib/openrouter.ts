@@ -1,11 +1,11 @@
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 export const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp:free';
-const FALLBACK_MODEL = 'google/gemini-flash-1.5';
+const FALLBACK_MODEL = 'google/gemini-2.0-flash-exp:free';
 
 export const AVAILABLE_MODELS = [
   { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)' },
-  { id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash' },
-  { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku' },
+  { id: 'google/gemini-flash-1.5-exp', name: 'Gemini 1.5 Flash Exp' },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
   { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)' },
 ];

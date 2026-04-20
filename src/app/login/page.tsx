@@ -30,12 +30,15 @@ function LoginForm() {
         body: JSON.stringify({ employeeId: employeeId.trim() }),
       });
       const data = await response.json();
-      if (!response.ok) { toast.error(data.error || 'Invalid Employee ID'); setIsLoading(false); return; }
-      localStorage.setItem('currentUser', JSON.stringify(data.teacher));
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userType', 'teacher');
+      if (!response.ok) { 
+        toast.error(data.error || 'Invalid Employee ID'); 
+        setIsLoading(false); 
+        return; 
+      }
+      
       toast.success(`Welcome ${data.teacher.name}!`);
-      setTimeout(() => router.push('/teacher/profile'), 500);
+      // Session is now in HTTP-only cookies, redirecting...
+      setTimeout(() => router.push('/teacher'), 500);
     } catch {
       toast.error('Login failed');
       setIsLoading(false);
@@ -53,11 +56,14 @@ function LoginForm() {
         body: JSON.stringify({ username: username.trim(), password }),
       });
       const data = await response.json();
-      if (!response.ok) { toast.error(data.error || 'Invalid credentials'); setIsLoading(false); return; }
-      localStorage.setItem('currentUser', JSON.stringify(data.admin));
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userType', 'admin');
+      if (!response.ok) { 
+        toast.error(data.error || 'Invalid credentials'); 
+        setIsLoading(false); 
+        return; 
+      }
+      
       toast.success(`Welcome ${data.admin.name}!`);
+      // Session is now in HTTP-only cookies, redirecting...
       setTimeout(() => router.push('/admin/dashboard'), 500);
     } catch {
       toast.error('Login failed');

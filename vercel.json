@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/daily-briefing",
       "schedule": "30 7 * * *"
-    },
-    {
-      "path": "/api/cron/check-expired",
-      "schedule": "*/5 * * * *"
     }
   ]
 }

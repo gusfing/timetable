@@ -41,6 +41,9 @@ CREATE TABLE teachers (
   telegram_linked_at TIMESTAMPTZ,
   subjects TEXT[] DEFAULT '{}',
   role TEXT NOT NULL CHECK (role IN ('teacher', 'admin', 'superadmin')),
+  title TEXT,
+  post TEXT,
+  is_onboarded BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(tenant_id, employee_id)

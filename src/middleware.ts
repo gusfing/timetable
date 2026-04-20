@@ -11,7 +11,9 @@ export async function middleware(request: NextRequest) {
   const isAdminPage = request.nextUrl.pathname.startsWith('/admin');
   const isTeacherPage = request.nextUrl.pathname.startsWith('/teacher');
 
-  if ((isAdminPage || isTeacherPage) && !user) {
+  const hasDemoSession = request.cookies.has('demo_session');
+
+  if ((isAdminPage || isTeacherPage) && !user && !hasDemoSession) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

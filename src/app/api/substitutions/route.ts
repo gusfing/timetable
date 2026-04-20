@@ -23,8 +23,16 @@ export async function GET(req: NextRequest) {
 
   // Auth check
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
+  const hasDemoSession = cookieStore.has('demo_session');
+
+  if (!session && !hasDemoSession) {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  let tenantId = '00000000-0000-0000-0000-000000000001';
+  if (session) {
+    // In a real app, we'd fetch the user's tenant_id here
+    // For this route, the list view (lines 31-76) doesn't use tenantId yet, but logic engine (82+) might.
   }
 
   // List all recent substitutions if no specific teacher requested
@@ -130,7 +138,9 @@ export async function POST(req: NextRequest) {
   
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const hasDemoSession = cookieStore.has('demo_session');
+
+    if (!session && !hasDemoSession) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const { absentTeacherId, substituteTeacherId, day, period } = body;
@@ -140,8 +150,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Identify tenant
-    const { data: profile } = await supabase.from('teachers').select('tenant_id').eq('id', session.user.id).single();
-    if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    let tenantId = '00000000-0000-0000-0000-000000000001';
+    let userId = '00000000-0000-0000-0000-000000000001';
+
+    if (session) {
+      const { data: profile } = await supabase.from('teachers').select('tenant_id').eq('id', session.user.id).single();
+      if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+      tenantId = profile.tenant_id;
+      userId = session.user.id;
+    }
 
     // 1. Find the period record to link to
     const dayOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(day);
@@ -161,10 +178,10 @@ export async function POST(req: NextRequest) {
     const { data: substitution, error } = await supabase
       .from('substitution_requests')
       .insert({
-        tenant_id: profile.tenant_id,
+        tenant_id: tenantId,
         original_teacher_id: absentTeacherId,
         period_id: periodData.id,
-        requested_by: session.user.id,
+        requested_by: userId,
         assigned_teacher_id: substituteTeacherId,
         status: 'assigned',
         expiration_time: new Date(Date.now() + 15 * 60 * 1000).toISOString(),

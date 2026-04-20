@@ -1442,7 +1442,7 @@ export const mockTeachers: Teacher[] = [
   }
 ];
 
-export const mockTimetable: TimetableEntry[] = [
+export const mockTimetable: any[] = [
   {
     "id": "entry-teacher-1-Mon-1",
     "teacher_id": "teacher-1",

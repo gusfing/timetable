@@ -11,16 +11,20 @@ export interface Tenant {
 
 export interface Teacher {
     id: string;
-    tenant_id: string;
+    tenant_id?: string;
     employee_id: string;
     name: string;
-    telegram_user_id: string | null;
-    telegram_linked_at: string | null;
+    telegram_user_id?: string | null;
+    telegram_linked_at?: string | null;
     subjects: string[];
-    role: 'teacher' | 'admin' | 'superadmin';
+    role?: 'teacher' | 'admin' | 'superadmin';
     wing?: Wing; // UI convenience
-    created_at: string;
-    updated_at: string;
+    is_onboarded?: boolean;
+    title?: string; // Mr., Mrs., Dr., etc.
+    post?: string;  // HOD, Coordinator, PT Teacher, etc.
+    created_at?: string;
+    updated_at?: string;
+    classTeacher?: string; // UI convenience for mock data
     workload_score?: number; // Calculated field
 }
 
