@@ -253,7 +253,7 @@ export async function sendDailyBriefing(
     if (schedule.length === 0) {
         message = `📅 *${date}*\n\n✨ You have no scheduled periods today. Enjoy your free day!`;
     } else {
-        const periods = schedule.map((p, i) => {
+        const periods = (schedule as any[]).map((p, i) => {
             const icon = p.periodType === 'teaching' ? '📚' : 
                          p.periodType === 'rest' ? '☕' :
                          p.periodType === 'break' ? '🍃' :
@@ -308,7 +308,7 @@ export async function sendBatchNotifications(
     
     for (const batch of batches) {
         const batchResults = await Promise.allSettled(
-            batch.map(n => 
+            (batch as any[]).map(n => 
                 bot.api.sendMessage(n.telegramUserId, n.message, { 
                     parse_mode: n.parseMode || 'Markdown' 
                 })

@@ -70,7 +70,7 @@ export async function sendDailyBriefingsToAllTeachers() {
                 }
 
                 // Format schedule for briefing
-                const schedule = (periods || []).map(p => ({
+                const schedule = (periods as any[] || []).map(p => ({
                     periodNumber: p.period_number,
                     startTime: p.start_time.slice(0, 5),
                     endTime: p.end_time.slice(0, 5),
@@ -152,7 +152,7 @@ export async function checkExpiredSubstitutionRequests() {
         const { error: updateError } = await supabase
             .from('substitution_requests')
             .update({ status: 'expired', updated_at: now })
-            .in('id', expiredRequests.map(r => r.id));
+            .in('id', (expiredRequests as any[]).map(r => r.id));
 
         if (updateError) {
             console.error('Error updating expired requests:', updateError);
