@@ -1,11 +1,14 @@
 import { Bot, InlineKeyboard } from "grammy";
 import { createClient } from '@supabase/supabase-js';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (!url || !key) {
+        throw new Error('Supabase URL or Key missing');
+    }
+    return createClient(url, key);
+}
 
 /**
  * Retry logic with exponential backoff
@@ -77,6 +80,8 @@ function formatErrorForUser(error: any): string {
  * Notify admin of system issues
  */
 async function notifyAdminOfSystemIssue(message: string) {
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+    const supabase = getSupabase();
     try {
         const { data: admins } = await supabase
             .from('teachers')
@@ -115,6 +120,7 @@ export async function notifyTeacherUpdate(
         action: "Substitution" | "Swap" | "Move";
     }
 ) {
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
     if (!BOT_TOKEN || !telegramId) {
         console.warn(`Cannot send Telegram notification: Token or ID missing for ${teacherName}`);
         return { success: false, error: 'Missing credentials' };
@@ -166,6 +172,7 @@ export async function sendSubstitutionNotification(
         fairnessIndex: number;
     }
 ) {
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
     if (!BOT_TOKEN || !telegramUserId) {
         console.warn('Cannot send substitution notification: Missing credentials');
         return { success: false, error: 'Missing credentials' };
@@ -226,6 +233,7 @@ export async function sendDailyBriefing(
         periodType: string;
     }>
 ) {
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
     if (!BOT_TOKEN || !telegramUserId) {
         console.warn(`Cannot send daily briefing: Missing credentials for ${teacherName}`);
         return { success: false, error: 'Missing credentials' };
@@ -281,6 +289,7 @@ export async function sendBatchNotifications(
         parseMode?: 'Markdown' | 'HTML';
     }>
 ) {
+    const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
     if (!BOT_TOKEN) {
         console.warn('Cannot send batch notifications: Missing bot token');
         return { success: false, error: 'Missing bot token' };

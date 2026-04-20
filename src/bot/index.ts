@@ -4,28 +4,32 @@ import * as dotenv from 'dotenv';
 import { DEFAULT_RULES } from '../lib/scheduler/rules';
 import { findTopSubstitutes } from '../lib/scheduler/engine';
 
-dotenv.config({ path: '.env.local' });
-
 const token = process.env.TELEGRAM_BOT_TOKEN || '';
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-if (!token) {
-    console.warn('TELEGRAM_BOT_TOKEN is missing in .env.local');
+function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (!url || !key) {
+        throw new Error('Supabase URL or Key missing');
+    }
+    return createClient(url, key);
 }
 
-if (!supabaseUrl || !supabaseKey) {
-    console.warn('Supabase credentials missing in .env.local');
+// Lazy load bot
+let _bot: Bot | null = null;
+export function getBot() {
+    if (!_bot) {
+        if (!token) throw new Error('TELEGRAM_BOT_TOKEN missing');
+        _bot = new Bot(token);
+    }
+    return _bot;
 }
-
-export const bot = new Bot(token);
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Store conversation state for Employee ID verification
 const conversationState = new Map<number, { awaitingEmployeeId: boolean }>();
 
 // Command: /start
-bot.command('start', (ctx) => {
+getBot().command('start', (ctx) => {
     ctx.reply(
         'Welcome to Anti-Gravity Timetable! 🎓\n\n' +
         'Use /link to connect your account with your Employee ID.\n' +
@@ -36,12 +40,12 @@ bot.command('start', (ctx) => {
 });
 
 // Command: /link - Start Employee ID verification flow
-bot.command('link', async (ctx) => {
+getBot().command('link', async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) return;
 
     // Check if already linked
-    const { data: existingTeacher } = await supabase
+    const { data: existingTeacher } = await getSupabase()
         .from('teachers')
         .select('name, employee_id')
         .eq('telegram_user_id', userId.toString())
@@ -66,7 +70,7 @@ bot.command('link', async (ctx) => {
 });
 
 // Command: /today - Get today's schedule
-bot.command('today', async (ctx) => {
+getBot().command('today', async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) return;
 
@@ -82,7 +86,7 @@ bot.command('today', async (ctx) => {
 });
 
 // Command: /week - Get weekly schedule
-bot.command('week', async (ctx) => {
+getBot().command('week', async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) return;
 
@@ -98,7 +102,7 @@ bot.command('week', async (ctx) => {
 });
 
 // Handle callback queries for substitution buttons
-bot.on('callback_query:data', async (ctx) => {
+getBot().on('callback_query:data', async (ctx) => {
     try {
         const data = JSON.parse(ctx.callbackQuery.data);
         
@@ -116,7 +120,7 @@ bot.on('callback_query:data', async (ctx) => {
 });
 
 // Handle text messages for Employee ID verification
-bot.on('message:text', async (ctx) => {
+getBot().on('message:text', async (ctx) => {
     const userId = ctx.from?.id;
     const text = ctx.message.text;
     
@@ -139,7 +143,7 @@ async function handleEmployeeIdVerification(ctx: Context, employeeId: string, te
         }
 
         // Check if Employee ID exists in database
-        const { data: teacher, error } = await supabase
+        const { data: teacher, error } = await getSupabase()
             .from('teachers')
             .select('id, name, telegram_user_id')
             .eq('employee_id', employeeId)
@@ -166,7 +170,7 @@ async function handleEmployeeIdVerification(ctx: Context, employeeId: string, te
         }
 
         // Link Telegram account
-        const { error: updateError } = await supabase
+        const { error: updateError } = await getSupabase()
             .from('teachers')
             .update({
                 telegram_user_id: telegramUserId.toString(),
@@ -198,7 +202,7 @@ async function handleEmployeeIdVerification(ctx: Context, employeeId: string, te
 // Helper: Get daily schedule
 async function getDailySchedule(telegramUserId: string): Promise<string> {
     // Get teacher info
-    const { data: teacher, error: teacherError } = await supabase
+    const { data: teacher, error: teacherError } = await getSupabase()
         .from('teachers')
         .select('id, name')
         .eq('telegram_user_id', telegramUserId)
@@ -219,7 +223,7 @@ async function getDailySchedule(telegramUserId: string): Promise<string> {
     });
 
     // Fetch today's periods
-    const { data: periods, error: periodsError } = await supabase
+    const { data: periods, error: periodsError } = await getSupabase()
         .from('periods')
         .select(`
             *,
@@ -252,7 +256,7 @@ async function getDailySchedule(telegramUserId: string): Promise<string> {
 
 // Helper: Get weekly schedule
 async function getWeeklySchedule(telegramUserId: string): Promise<string> {
-    const { data: teacher, error: teacherError } = await supabase
+    const { data: teacher, error: teacherError } = await getSupabase()
         .from('teachers')
         .select('id, name')
         .eq('telegram_user_id', telegramUserId)
@@ -262,7 +266,7 @@ async function getWeeklySchedule(telegramUserId: string): Promise<string> {
         throw new Error('Teacher not found');
     }
 
-    const { data: periods, error: periodsError } = await supabase
+    const { data: periods, error: periodsError } = await getSupabase()
         .from('periods')
         .select(`
             *,
@@ -308,7 +312,7 @@ async function handleSubstitutionAccept(ctx: Context, requestId: string) {
 
     try {
         // Get teacher info
-        const { data: teacher } = await supabase
+        const { data: teacher } = await getSupabase()
             .from('teachers')
             .select('id, name')
             .eq('telegram_user_id', userId.toString())
@@ -319,7 +323,7 @@ async function handleSubstitutionAccept(ctx: Context, requestId: string) {
         }
 
         // Update substitution request
-        const { data: request, error } = await supabase
+        const { data: request, error } = await getSupabase()
             .from('substitution_requests')
             .update({ 
                 status: 'accepted',
@@ -368,7 +372,7 @@ async function handleSubstitutionDecline(ctx: Context, requestId: string) {
     if (!userId) return;
 
     try {
-        const { data: teacher } = await supabase
+        const { data: teacher } = await getSupabase()
             .from('teachers')
             .select('id, name')
             .eq('telegram_user_id', userId.toString())
@@ -379,7 +383,7 @@ async function handleSubstitutionDecline(ctx: Context, requestId: string) {
         }
 
         // Update substitution request to declined
-        const { data: request, error } = await supabase
+        const { data: request, error } = await getSupabase()
             .from('substitution_requests')
             .update({ 
                 status: 'declined',
@@ -413,7 +417,7 @@ async function handleSubstitutionDecline(ctx: Context, requestId: string) {
 // Helper: Notify admin of substitution status
 async function notifyAdminOfSubstitutionStatus(request: any, status: string, teacherName: string) {
     // Get admin users
-    const { data: admins } = await supabase
+    const { data: admins } = await getSupabase()
         .from('teachers')
         .select('telegram_user_id, name')
         .eq('role', 'admin')
@@ -429,7 +433,7 @@ async function notifyAdminOfSubstitutionStatus(request: any, status: string, tea
 
     for (const admin of admins) {
         try {
-            await bot.api.sendMessage(admin.telegram_user_id, message, { parse_mode: 'Markdown' });
+            await getBot().api.sendMessage(admin.telegram_user_id, message, { parse_mode: 'Markdown' });
         } catch (error) {
             console.error(`Failed to notify admin ${admin.name}:`, error);
         }
@@ -442,7 +446,7 @@ async function escalateToNextCandidate(request: any) {
         console.log(`Escalating substitution request ${request.id} for period ${request.period_id}`);
         
         // 1. Get the original period details
-        const { data: period } = await supabase
+        const { data: period } = await getSupabase()
             .from('periods')
             .select('*, teachers(wing, tenant_id)')
             .eq('id', request.period_id)
@@ -452,7 +456,7 @@ async function escalateToNextCandidate(request: any) {
         const tenantId = (period.teachers as any).tenant_id;
 
         // 2. Fetch rules for this tenant
-        const { data: config } = await supabase
+        const { data: config } = await getSupabase()
             .from('tenant_configs')
             .select('rules')
             .eq('tenant_id', tenantId)
@@ -461,11 +465,11 @@ async function escalateToNextCandidate(request: any) {
         const rules = config?.rules || DEFAULT_RULES;
 
         // 3. Fetch all teachers and current timetable to find new candidates
-        const { data: allTeachers } = await supabase.from('teachers').select('*').eq('tenant_id', tenantId);
-        const { data: allPeriods } = await supabase.from('periods').select('*, classes(name)').eq('tenant_id', tenantId);
+        const { data: allTeachers } = await getSupabase().from('teachers').select('*').eq('tenant_id', tenantId);
+        const { data: allPeriods } = await getSupabase().from('periods').select('*, classes(name)').eq('tenant_id', tenantId);
         
         // 4. Mark previously involved teachers as unavailable
-        const { data: previousAttempts } = await supabase
+        const { data: previousAttempts } = await getSupabase()
             .from('substitution_requests')
             .select('assigned_teacher_id')
             .eq('period_id', request.period_id);
@@ -510,7 +514,7 @@ async function escalateToNextCandidate(request: any) {
         const nextSubstitute = candidates[0];
 
         // 6. Create new request
-        const { data: newRequest } = await supabase
+        const { data: newRequest } = await getSupabase()
             .from('substitution_requests')
             .insert({
                 tenant_id: tenantId,
@@ -536,7 +540,7 @@ async function escalateToNextCandidate(request: any) {
                 .text('✅ Accept', JSON.stringify({ action: 'accept_substitution', requestId: newRequest.id }))
                 .text('❌ Decline', JSON.stringify({ action: 'decline_substitution', requestId: newRequest.id }));
 
-            await bot.api.sendMessage(nextSubstitute.telegram_user_id, message, {
+            await getBot().api.sendMessage(nextSubstitute.telegram_user_id, message, {
                 parse_mode: 'Markdown',
                 reply_markup: keyboard
             });

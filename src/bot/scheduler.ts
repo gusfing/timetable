@@ -1,10 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { sendDailyBriefing } from './notifier';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (!url || !key) {
+        throw new Error('Supabase URL or Key missing');
+    }
+    return createClient(url, key);
+}
 
 /**
  * Send daily briefings to all linked teachers
@@ -13,6 +17,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export async function sendDailyBriefingsToAllTeachers() {
     console.log('Starting daily briefing delivery...');
     
+    const supabase = getSupabase();
     try {
         // Get all teachers with linked Telegram accounts
         const { data: teachers, error: teachersError } = await supabase
@@ -120,6 +125,7 @@ export async function sendDailyBriefingsToAllTeachers() {
  * This should be called periodically (e.g., every minute)
  */
 export async function checkExpiredSubstitutionRequests() {
+    const supabase = getSupabase();
     try {
         const now = new Date().toISOString();
 
