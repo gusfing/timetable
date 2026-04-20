@@ -108,7 +108,9 @@ getBot().command('week', async (ctx: Context) => {
 // Handle callback queries for substitution buttons
 getBot().on('callback_query:data', async (ctx: Context) => {
     try {
-        const data = JSON.parse(ctx.callbackQuery.data);
+        const callbackData = ctx.callbackQuery?.data;
+        if (!callbackData) return;
+        const data = JSON.parse(callbackData);
         
         if (data.action === 'accept_substitution') {
             await handleSubstitutionAccept(ctx, data.requestId);
@@ -126,7 +128,8 @@ getBot().on('callback_query:data', async (ctx: Context) => {
 // Handle text messages for Employee ID verification
 getBot().on('message:text', async (ctx: Context) => {
     const userId = ctx.from?.id;
-    const text = ctx.message.text;
+    const text = ctx.message?.text;
+    if (!text) return;
     
     if (!userId) return;
 
