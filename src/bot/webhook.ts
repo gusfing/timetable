@@ -1,11 +1,11 @@
 import { webhookCallback } from 'grammy';
-import { bot } from './index';
+import { getBot } from './index';
 
 /**
  * Webhook handler for Telegram bot
  * This can be used with Next.js API routes or serverless functions
  */
-export const handleWebhook = webhookCallback(bot, 'std/http');
+export const handleWebhook = webhookCallback(getBot(), 'std/http');
 
 /**
  * Setup webhook for the bot
@@ -13,7 +13,7 @@ export const handleWebhook = webhookCallback(bot, 'std/http');
  */
 export async function setupWebhook(webhookUrl: string) {
     try {
-        const result = await bot.api.setWebhook(webhookUrl);
+        const result = await getBot().api.setWebhook(webhookUrl);
         console.log('Webhook setup result:', result);
         return { success: true, result };
     } catch (error) {
@@ -27,7 +27,7 @@ export async function setupWebhook(webhookUrl: string) {
  */
 export async function removeWebhook() {
     try {
-        const result = await bot.api.deleteWebhook();
+        const result = await getBot().api.deleteWebhook();
         console.log('Webhook removed:', result);
         return { success: true, result };
     } catch (error) {
@@ -41,7 +41,7 @@ export async function removeWebhook() {
  */
 export async function getWebhookInfo() {
     try {
-        const info = await bot.api.getWebhookInfo();
+        const info = await getBot().api.getWebhookInfo();
         console.log('Webhook info:', info);
         return { success: true, info };
     } catch (error) {
