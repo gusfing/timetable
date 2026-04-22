@@ -3,6 +3,15 @@ import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
+  console.log('[Login API] POST request received');
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[Login API] Missing Supabase environment variables');
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
   try {
     const { employeeId } = await req.json();
     const cookieStore = await cookies();

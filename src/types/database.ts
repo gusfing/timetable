@@ -15,6 +15,7 @@ export interface Teacher {
     employee_id: string;
     name: string;
     telegram_user_id?: string | null;
+    telegram_id?: string | null; // Compatibility alias
     telegram_linked_at?: string | null;
     subjects: string[];
     role?: 'teacher' | 'admin' | 'superadmin';
