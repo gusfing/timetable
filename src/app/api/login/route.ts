@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (teacherErr || !teacher) {
+      console.warn(`[Teacher Login] Invalid Employee ID attempt: ${employeeId}`);
       return NextResponse.json({ error: 'Invalid Employee ID' }, { status: 401 });
     }
 
@@ -71,12 +72,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (authErr) {
+       console.error(`[Teacher Login] Auth error for ${email}:`, authErr.message);
        return NextResponse.json({ error: authErr.message }, { status: 401 });
     }
 
+    console.log(`[Teacher Login] Successful login for: ${teacher.name} (${employeeId})`);
     return NextResponse.json({ success: true, teacher });
   } catch (err: any) {
-    console.error('Teacher login error:', err);
+    console.error('[Teacher Login] Unexpected error:', err);
     return NextResponse.json({ error: 'Login failed' }, { status: 500 });
   }
 }
